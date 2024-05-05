@@ -62,9 +62,6 @@ public class EnemyMove : MonoBehaviour
         // flip sprite
         if (nextMove != 0)
             spriteRenderer.flipX = nextMove == 1;
-
-        // reserve next action
-        ReserveThink();
     }
 
     void ReserveThink()
