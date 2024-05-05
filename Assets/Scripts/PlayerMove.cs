@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerMove : MonoBehaviour
 {
     public float maxSpeed;
+    public float jumpPower;
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator animator;
@@ -18,6 +19,13 @@ public class PlayerMove : MonoBehaviour
 
     private void Update()
     {
+        // Jump
+        if (Input.GetButtonDown("Jump") && !animator.GetBool("isJumping"))
+        {
+            rigid.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
+            animator.SetBool("isJumping", true);
+        } 
+
         // ¼Óµµ decay
         if (Input.GetButtonUp("Horizontal"))
             rigid.velocity = new Vector2(rigid.velocity.normalized.x * 0.5f, rigid.velocity.y);
@@ -35,12 +43,26 @@ public class PlayerMove : MonoBehaviour
 
     void FixedUpdate()
     {
+        // move
         float h = Input.GetAxisRaw("Horizontal");
         rigid.AddForce(Vector2.right * h, ForceMode2D.Impulse);
         
+        // limit max move spped
         if (rigid.velocity.x > maxSpeed)
             rigid.velocity = new Vector2(maxSpeed, rigid.velocity.y);
         else if (rigid.velocity.x < -maxSpeed)
             rigid.velocity = new Vector2(-maxSpeed, rigid.velocity.y);
+
+        // Landing Platform
+        if (rigid.velocity.y < 0)
+        {
+            Debug.DrawRay(rigid.position, Vector3.down, Color.green);
+            RaycastHit2D raycastHit = Physics2D.Raycast(rigid.position, Vector3.down, 1, LayerMask.GetMask("Platform"));
+            if (raycastHit.collider != null)
+            {
+                if (raycastHit.distance < 0.5f)
+                    animator.SetBool("isJumping", false);
+            }
+        }
     }
 }
