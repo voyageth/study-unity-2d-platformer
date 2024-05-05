@@ -4,8 +4,15 @@ using UnityEngine;
 
 public class PlayerMove : MonoBehaviour
 {
-    public float maxSpeed;
-    public float jumpPower;
+    public float maxSpeed = 5;
+    public float jumpPower = 20;
+    public float invincibleTimeInSec = 3;
+
+    int LAYER_ID__PLAYER = 10;
+    int LAYER_ID__PLAYER_DAMAGED = 11;
+    Color PLAYER_COLOR = new Color(1, 1, 1, 1);
+    Color PLAYER_DAMAGED_COLOR = new Color(1, 1, 1, 0.4f);
+
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator animator;
@@ -31,7 +38,7 @@ public class PlayerMove : MonoBehaviour
             rigid.velocity = new Vector2(rigid.velocity.normalized.x * 0.5f, rigid.velocity.y);
 
         // 방향 전환
-        if (Input.GetButtonDown("Horizontal"))
+        if (Input.GetButton("Horizontal"))
             spriteRenderer.flipX = Input.GetAxisRaw("Horizontal") == -1;
 
         // Animation
@@ -64,5 +71,39 @@ public class PlayerMove : MonoBehaviour
                     animator.SetBool("isJumping", false);
             }
         }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.tag == "Enemy")
+        {
+            OnDamaged(collision.transform.position);
+        }
+    }
+
+    void OnDamaged(Vector2 targetPosition)
+    {
+        Debug.Log(transform.position.x + " / " + targetPosition.x);
+        // Change Layer (무적 상태)
+        gameObject.layer = LAYER_ID__PLAYER_DAMAGED;
+
+        // Change Alpha
+        spriteRenderer.color = PLAYER_DAMAGED_COLOR;
+
+        // Reaction Force
+        int reactionDirection = transform.position.x - targetPosition.x > 0 ? 1 : -1;
+        rigid.AddForce(new Vector2(reactionDirection * 10, 1) * 14, ForceMode2D.Impulse);
+
+        // animation
+        animator.SetTrigger("doDamaged");
+
+        // 일정 시간 뒤 무적 해제
+        Invoke("OffDamaged", invincibleTimeInSec);
+    }
+
+    void OffDamaged()
+    {
+        gameObject.layer = LAYER_ID__PLAYER;
+        spriteRenderer.color = PLAYER_COLOR;
     }
 }
