@@ -8,15 +8,18 @@ public class EnemyMove : MonoBehaviour
     public int nextMove;
     public float minThinkTimeInSecInclusive = 2f;
     public float maxThinkTimeInSecExclusive = 5f;
+
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator animator;
+    CapsuleCollider2D capsuleCollider;
 
     private void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
+        capsuleCollider = GetComponent<CapsuleCollider2D>();
 
         ReserveThink();
     }
@@ -69,5 +72,28 @@ public class EnemyMove : MonoBehaviour
         // 오... 이 동네는 주기적 실행을 이렇게 하는건가...
         float nextThinkTime = Random.Range(minThinkTimeInSecInclusive, maxThinkTimeInSecExclusive);
         Invoke("Think", nextThinkTime);
+    }
+
+    public void OnDamaged()
+    {
+        // Sprite Alpha
+        spriteRenderer.color = new Color(1, 1, 1, 0.4f);
+
+        // Sprite Flip Y
+        spriteRenderer.flipY = true;
+
+        // Collider Disable
+        capsuleCollider.enabled = false;
+
+        // Die Effect Jump
+        rigid.AddForce(Vector2.up * 3, ForceMode2D.Impulse);
+
+        // Destroy
+        Invoke("DeActive", 5);
+    }
+
+    void DeActive()
+    {
+        gameObject.SetActive(false);
     }
 }

@@ -77,13 +77,34 @@ public class PlayerMove : MonoBehaviour
     {
         if (collision.gameObject.tag == "Enemy")
         {
-            OnDamaged(collision.transform.position);
+            if (rigid.velocity.y < 0 && transform.position.y > collision.transform.position.y)
+            {
+                // Attack
+                OnAttack(collision.transform);
+            }
+            else
+            {
+                // Damaged
+                OnDamaged(collision.transform);
+            }
         }
     }
 
-    void OnDamaged(Vector2 targetPosition)
+    void OnAttack(Transform enemyTransform)
     {
-        Debug.Log(transform.position.x + " / " + targetPosition.x);
+        // Point
+
+        // Reaction Force
+        rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse);
+
+        // Enemy Die
+        EnemyMove enemyMove = enemyTransform.GetComponent<EnemyMove>();
+        enemyMove.OnDamaged();
+    }
+
+    void OnDamaged(Transform enemyTransform)
+    {
+        Debug.Log(transform.position.x + " / " + enemyTransform.transform.position.x);
         // Change Layer (무적 상태)
         gameObject.layer = LAYER_ID__PLAYER_DAMAGED;
 
@@ -91,7 +112,7 @@ public class PlayerMove : MonoBehaviour
         spriteRenderer.color = PLAYER_DAMAGED_COLOR;
 
         // Reaction Force
-        int reactionDirection = transform.position.x - targetPosition.x > 0 ? 1 : -1;
+        int reactionDirection = transform.position.x - enemyTransform.transform.position.x > 0 ? 1 : -1;
         rigid.AddForce(new Vector2(reactionDirection * 10, 1) * 14, ForceMode2D.Impulse);
 
         // animation
