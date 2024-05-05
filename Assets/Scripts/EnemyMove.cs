@@ -76,6 +76,12 @@ public class EnemyMove : MonoBehaviour
 
     public void OnDamaged()
     {
+        // 맞으면 그냥 죽음
+        OnDie();
+    }
+
+    void OnDie()
+    {
         // Sprite Alpha
         spriteRenderer.color = new Color(1, 1, 1, 0.4f);
 

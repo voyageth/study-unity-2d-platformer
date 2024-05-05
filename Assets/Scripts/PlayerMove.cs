@@ -4,24 +4,73 @@ using UnityEngine;
 
 public class PlayerMove : MonoBehaviour
 {
+    enum PLAYER_SOUND_TYPE
+    {
+        JUMP,
+        ATTACK,
+        DAMAGED,
+        ITEM,
+        DIE,
+        FINISH,
+    }
+
     public float maxSpeed = 5;
     public float jumpPower = 20;
     public float invincibleTimeInSec = 3;
+    public int healthPoint = 3;
 
-    int LAYER_ID__PLAYER = 10;
-    int LAYER_ID__PLAYER_DAMAGED = 11;
-    Color PLAYER_COLOR = new Color(1, 1, 1, 1);
-    Color PLAYER_DAMAGED_COLOR = new Color(1, 1, 1, 0.4f);
+    public GameManager gameManager;
+    public AudioClip audioJump;
+    public AudioClip audioAttack;
+    public AudioClip audioDamaged;
+    public AudioClip audioItem;
+    public AudioClip audioDie;
+    public AudioClip audioFinish;
+
+    int PLAYER__LAYER_ID = 10;
+    int PLAYER_DAMAGED__LAYER_ID = 11;
+    Color PLAYER__COLOR = new Color(1, 1, 1, 1);
+    Color PLAYER__DAMAGED_COLOR = new Color(1, 1, 1, 0.4f);
 
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator animator;
+    CapsuleCollider2D capsuleCollider;
+    AudioSource audioSource;
 
     void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
+        capsuleCollider = GetComponent<CapsuleCollider2D>();
+        audioSource = GetComponent<AudioSource>();
+    }
+
+    void PlaySound(PLAYER_SOUND_TYPE playerSoundType)
+    {
+        switch (playerSoundType)
+        {
+            case PLAYER_SOUND_TYPE.JUMP:
+                audioSource.clip = audioJump;
+                break;
+            case PLAYER_SOUND_TYPE.ATTACK:
+                audioSource.clip = audioAttack;
+                break;
+            case PLAYER_SOUND_TYPE.DAMAGED:
+                audioSource.clip = audioDamaged;
+                break;
+            case PLAYER_SOUND_TYPE.ITEM:
+                audioSource.clip = audioItem;
+                break;
+            case PLAYER_SOUND_TYPE.DIE:
+                audioSource.clip = audioDie;
+                break;
+            case PLAYER_SOUND_TYPE.FINISH:
+                audioSource.clip = audioFinish;
+                break;
+        }
+        audioSource.Play();
     }
 
     private void Update()
@@ -31,6 +80,7 @@ public class PlayerMove : MonoBehaviour
         {
             rigid.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
             animator.SetBool("isJumping", true);
+            PlaySound(PLAYER_SOUND_TYPE.JUMP);
         } 
 
         // 加档 decay
@@ -90,26 +140,95 @@ public class PlayerMove : MonoBehaviour
         }
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Item")
+        {
+            // Point
+            gameManager.OnTakeItem(collision.gameObject);
+
+            // Deactive Item
+            collision.gameObject.SetActive(false);
+
+            // play sound
+            PlaySound(PLAYER_SOUND_TYPE.ITEM);
+        }
+        else if (collision.gameObject.tag == "Finish")
+        {
+            // Next Stage
+            gameManager.OnFinishStage();
+            
+            // player reposition
+            OnPlayerInitPosition();
+
+            // play sound
+            PlaySound(PLAYER_SOUND_TYPE.FINISH);
+        }
+        else if (collision.gameObject.tag == "GameManager")
+        {
+            // Damaged
+            OnDamaged(collision.transform);
+
+            // player reposition
+            if (healthPoint > 0)
+                OnPlayerInitPosition();
+        }
+    }
+
+    void OnPlayerInitPosition()
+    {
+        rigid.velocity = Vector2.zero;
+        transform.position = new Vector3(0, 0, 0);
+
+    }
+
     void OnAttack(Transform enemyTransform)
     {
         // Point
+        gameManager.OnKillEnemy();
 
         // Reaction Force
         rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse);
 
         // Enemy Die
         EnemyMove enemyMove = enemyTransform.GetComponent<EnemyMove>();
-        enemyMove.OnDamaged();
+        if (enemyMove != null)
+        {
+            enemyMove.OnDamaged();
+        }
+
+        // play sound
+        PlaySound(PLAYER_SOUND_TYPE.ATTACK);
+    }
+
+    public void OnPlayerHealthPointDown()
+    {
+        // health down
+        healthPoint--;
+
+        // UI update
+        gameManager.OnHealthPointDown(healthPoint);
+
+        if (healthPoint <= 0)
+        {   
+            // player die effect
+            OnDie();
+
+            // update ui
+            gameManager.OnGameOver();
+        }
     }
 
     void OnDamaged(Transform enemyTransform)
     {
-        Debug.Log(transform.position.x + " / " + enemyTransform.transform.position.x);
+        // Health Point Down
+        OnPlayerHealthPointDown();
+
         // Change Layer (公利 惑怕)
-        gameObject.layer = LAYER_ID__PLAYER_DAMAGED;
+        gameObject.layer = PLAYER_DAMAGED__LAYER_ID;
 
         // Change Alpha
-        spriteRenderer.color = PLAYER_DAMAGED_COLOR;
+        spriteRenderer.color = PLAYER__DAMAGED_COLOR;
 
         // Reaction Force
         int reactionDirection = transform.position.x - enemyTransform.transform.position.x > 0 ? 1 : -1;
@@ -120,11 +239,32 @@ public class PlayerMove : MonoBehaviour
 
         // 老沥 矫埃 第 公利 秦力
         Invoke("OffDamaged", invincibleTimeInSec);
+
+        // play sound
+        PlaySound(PLAYER_SOUND_TYPE.DAMAGED);
     }
 
     void OffDamaged()
     {
-        gameObject.layer = LAYER_ID__PLAYER;
-        spriteRenderer.color = PLAYER_COLOR;
+        gameObject.layer = PLAYER__LAYER_ID;
+        spriteRenderer.color = PLAYER__COLOR;
+    }
+
+    void OnDie()
+    {
+        // Sprite Alpha
+        spriteRenderer.color = new Color(1, 1, 1, 0.4f);
+
+        // Sprite Flip Y
+        spriteRenderer.flipY = true;
+
+        // Collider Disable
+        capsuleCollider.enabled = false;
+
+        // Die Effect Jump
+        rigid.AddForce(Vector2.up * 3, ForceMode2D.Impulse);
+
+        // play sound
+        PlaySound(PLAYER_SOUND_TYPE.DIE);
     }
 }
